@@ -325,10 +325,6 @@
           <div class="edu-degree">Postgraduate Diploma &mdash; DevOps for Cloud Computing</div>
           <div class="edu-school">Lambton College &middot; Toronto, ON</div>
           <div class="edu-detail">GPA: 3.2 / 4.0</div>
-          <div class="doc-links">
-            <span class="doc-link" onclick="openModal('lambton-transcript')">&#128196; View Transcript</span>
-            <span class="doc-link" onclick="openModal('lambton-degree')">&#127891; View Degree</span>
-          </div>
         </div>
       </div>
       <div class="edu-item reveal">
@@ -337,10 +333,6 @@
           <div class="edu-degree">Bachelor of Engineering &mdash; Information &amp; Technology</div>
           <div class="edu-school">Parul Institute of Engineering and Technology &middot; India</div>
           <div class="edu-detail">GPA: 7.2 / 10</div>
-          <div class="doc-links">
-            <span class="doc-link" onclick="openModal('parul-transcript')">&#128196; View Transcript</span>
-            <span class="doc-link" onclick="openModal('parul-degree')">&#127891; View Degree</span>
-          </div>
         </div>
       </div>
     </div>
@@ -384,45 +376,23 @@
 
       <div class="reveal">
         <div class="cert-item">
-          <div class="cert-left">
-            <span class="cert-name">AWS Solution Architecture Associate</span>
-          </div>
+          <span class="cert-name">AWS Solution Architecture Associate</span>
           <span class="cert-badge progress">In Progress</span>
         </div>
         <div class="cert-item">
-          <div class="cert-left">
-            <span class="cert-name">Google Data Analytics Certification</span>
-            <div class="cert-doc-links">
-              <span class="doc-link" onclick="openModal('cert-google')">&#128196; View Certificate</span>
-            </div>
-          </div>
+          <span class="cert-name">Google Data Analytics Certification</span>
           <span class="cert-badge">Google</span>
         </div>
         <div class="cert-item">
-          <div class="cert-left">
-            <span class="cert-name">AWS Skill Badges</span>
-            <div class="cert-doc-links">
-              <span class="doc-link" onclick="openModal('cert-aws')">&#128196; View Certificate</span>
-            </div>
-          </div>
+          <span class="cert-name">AWS Skill Badges</span>
           <span class="cert-badge">Amazon Web Services</span>
         </div>
         <div class="cert-item">
-          <div class="cert-left">
-            <span class="cert-name">Python Bootcamp</span>
-            <div class="cert-doc-links">
-              <span class="doc-link" onclick="openModal('cert-python')">&#128196; View Certificate</span>
-            </div>
-          </div>
+          <span class="cert-name">Python Bootcamp</span>
           <span class="cert-badge">Udemy</span>
         </div>
         <div class="cert-item">
-          <div class="cert-left">
-            <span class="cert-name">Web Development using Node.js</span>
-            <div class="cert-doc-links">
-              <span class="doc-link" onclick="openModal('cert-nodejs')">&#128196; View Certificate</span>
-            </div>
-          </div>
+          <span class="cert-name">Web Development using Node.js</span>
           <span class="cert-badge">Progate</span>
         </div>
       </div>
@@ -542,7 +512,7 @@
       <div class="modal-footer">
         <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--mid)" id="blogModalReadTime"></span>
         <div style="display:flex;gap:0.8rem;align-items:center">
-          <a id="blogModalMediumLink" href="#" target="_blank" rel="noopener" class="btn accent" style="text-decoration:none;display:none">Read on Medium &#8599;</a>
+          <a id="blogModalMediumLink" href="#" target="_blank" rel="noopener" class="btn accent" style="text-decoration:none">Read on Medium &#8599;</a>
           <button class="btn" onclick="closeBlogModal()">Close</button>
         </div>
       </div>
@@ -609,58 +579,99 @@
       document.body.style.overflow = "hidden";
     }
 
-    // ── Blog — loads from posts.json in this repo ─────────────────
+    // ── Blog — Medium RSS via rss2json ─────────────────────────────
+    // YOUR MEDIUM USERNAME (no @ symbol):
+    const MEDIUM_USER = "abhikakadiya2301";
+    // Get your FREE API key at rss2json.com → paste it here:
+    const RSS_KEY = "YOUR_RSS2JSON_KEY";
+    const RSS_URL = "https://api.rss2json.com/v1/api.json?rss_url="
+      + encodeURIComponent("https://medium.com/feed/@" + MEDIUM_USER)
+      + "&api_key=" + RSS_KEY + "&count=4";
+
     let cachedPosts = [];
+
+    function stripTags(h) {
+      const d = document.createElement("div");
+      d.innerHTML = h; return d.textContent || d.innerText || "";
+    }
+
+    function fmtDate(s) {
+      return new Date(s).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+    }
+
+    function cleanContent(raw) {
+      const d = document.createElement("div");
+      d.innerHTML = raw;
+      d.querySelectorAll("a[href*='medium.com/m/signin']").forEach(a => a.remove());
+      return d.innerHTML;
+    }
+
+    function thumbOrPlaceholder(post, tag) {
+      if (post.thumbnail && post.thumbnail.startsWith("http")) {
+        return `<img class="blog-thumb" src="${post.thumbnail}" alt="" loading="lazy" onerror="this.style.display='none'">`;
+      }
+      return `<div style="width:100%;height:130px;background:linear-gradient(135deg,#dce8f5,#c4d9ee);margin-bottom:1rem;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:0.65rem;color:var(--accent);letter-spacing:0.12em;text-transform:uppercase">${tag}</div>`;
+    }
 
     async function loadBlogPosts() {
       const grid = document.getElementById("blogGrid");
       try {
-        const res = await fetch("posts.json?t=" + Date.now());
-        if (!res.ok) throw new Error("no posts.json");
-        const posts = await res.json();
-        cachedPosts = posts;
+        const res  = await fetch(RSS_URL);
+        const data = await res.json();
+        if (data.status !== "ok" || !data.items || !data.items.length) throw new Error();
 
-        if (!posts.length) {
-          grid.innerHTML = `<div class="blog-empty">No posts yet.<br>Go to <a href="admin.html">admin panel</a> to write your first post.</div>`;
-          return;
-        }
+        cachedPosts = data.items
+          .filter(p => p.categories && p.categories.length > 0)
+          .slice(0, 4);
+        if (!cachedPosts.length) cachedPosts = data.items.slice(0, 4);
 
-        grid.innerHTML = posts.map((p, i) => {
-          const excerpt = p.excerpt || stripTags(p.content || "").slice(0, 160) + "...";
-          const date = new Date(p.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
-          const thumbHtml = p.cover
-            ? `<img class="blog-thumb" src="${p.cover}" alt="" loading="lazy" onerror="this.style.display='none'">`
-            : `<div style="width:100%;height:130px;background:linear-gradient(135deg,#dce8f5,#c4d9ee);margin-bottom:1rem;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:0.65rem;color:var(--accent);letter-spacing:0.12em;text-transform:uppercase">${p.tag||"DevOps"}</div>`;
-          return `<div class="blog-card" onclick="openBlogModal(${i})">
-            ${thumbHtml}
-            <p class="blog-tag">${p.tag||"DevOps"}</p>
+        grid.innerHTML = cachedPosts.map((p, i) => {
+          const tag     = (p.categories && p.categories[0]) || "DevOps";
+          const excerpt = stripTags(p.description || p.content || "").trim().slice(0, 160) + "...";
+          const date    = fmtDate(p.pubDate);
+          return `<div class="blog-card" onclick="openBlogModal(${i})" role="button" tabindex="0">
+            ${thumbOrPlaceholder(p, tag)}
+            <p class="blog-tag">${tag}</p>
             <h3 class="blog-title">${p.title}</h3>
             <p class="blog-excerpt">${excerpt}</p>
-            <p class="blog-meta">${date}&nbsp;&middot;&nbsp;${p.readTime||"5 min read"}</p>
+            <p class="blog-meta">${date}</p>
             <span class="read-more">Read post &rarr;</span>
           </div>`;
         }).join("");
+
       } catch(e) {
-        grid.innerHTML = `<div class="blog-empty">Posts coming soon.<br><a href="admin.html">Write your first post &rarr;</a></div>`;
+        grid.innerHTML = `<div class="blog-empty">
+          Posts will appear here once you set up the RSS key.<br>
+          <a href="https://medium.com/@${MEDIUM_USER}" target="_blank" rel="noopener">Read on Medium &rarr;</a>
+        </div>`;
       }
     }
 
-    function stripTags(h){ const d=document.createElement("div"); d.innerHTML=h; return d.textContent||d.innerText||""; }
-
     function openBlogModal(idx) {
-      const p = cachedPosts[idx];
-      const date = new Date(p.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
-      const heroHtml = p.cover ? `<img class="blog-reader-hero" src="${p.cover}" alt="">` : "";
-      document.getElementById("blogModalTag").textContent = p.tag||"DevOps";
-      document.getElementById("blogModalMediumLink").style.display = "none";
+      const p      = cachedPosts[idx];
+      const tag    = (p.categories && p.categories[0]) || "DevOps";
+      const date   = fmtDate(p.pubDate);
+      const hero   = p.thumbnail && p.thumbnail.startsWith("http")
+        ? `<img class="blog-reader-hero" src="${p.thumbnail}" alt="">` : "";
+      const body   = cleanContent(p.content || p.description || "");
+
+      document.getElementById("blogModalTag").textContent = tag;
+      const medLink = document.getElementById("blogModalMediumLink");
+      medLink.href  = p.link;
+      medLink.style.display = "inline-flex";
+
       document.getElementById("blogModalBody").innerHTML = `
         <div class="blog-reader">
-          ${heroHtml}
-          <p class="blog-reader-tag">${p.tag||"DevOps"}</p>
+          ${hero}
+          <p class="blog-reader-tag">${tag}</p>
           <h2 class="blog-reader-title">${p.title}</h2>
-          <p class="blog-reader-meta">${date}&nbsp;&middot;&nbsp;${p.readTime||"5 min read"}&nbsp;&middot;&nbsp;Abhishek Kakadiya</p>
-          <div class="blog-reader-body">${p.content||""}</div>
+          <p class="blog-reader-meta">${date}&nbsp;&middot;&nbsp;${p.author || "Abhishek Kakadiya"}</p>
+          <div class="blog-reader-body">${body}</div>
+          <div class="blog-reader-footer">Originally published on
+            <a href="${p.link}" target="_blank" rel="noopener" style="color:var(--accent)">Medium</a>.
+          </div>
         </div>`;
+
       document.getElementById("blogModal").classList.add("open");
       document.body.style.overflow = "hidden";
     }
@@ -670,8 +681,8 @@
       document.body.style.overflow = "";
     }
 
-    document.getElementById("blogModal").addEventListener("click", function(e){
-      if(e.target===this) closeBlogModal();
+    document.getElementById("blogModal").addEventListener("click", function(e) {
+      if (e.target === this) closeBlogModal();
     });
 
     loadBlogPosts();
