@@ -196,8 +196,9 @@
 
     /* ANIMATIONS */
     @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
-    .reveal{opacity:0;transform:translateY(20px);transition:opacity 0.7s,transform 0.7s}
-    .reveal.visible{opacity:1;transform:translateY(0)}
+    .reveal{opacity:1;transform:none}
+    .js-loaded .reveal{opacity:0;transform:translateY(20px);transition:opacity 0.7s,transform 0.7s}
+    .js-loaded .reveal.visible{opacity:1;transform:translateY(0)}
 
     /* RESPONSIVE */
     @media(max-width:620px){
@@ -244,7 +245,7 @@
           </div>
           <div class="hero-contact-row">
             <span class="hero-contact-item">&#128205; Ottawa, ON</span>
-            <span class="hero-contact-item">&#9993; <a href="/cdn-cgi/l/email-protection#a4c5c6cccdcfc5cfc5c0cdddc596979495e4c3c9c5cdc88ac7cbc9"><span class="__cf_email__" data-cfemail="d1b0b3b9b8bab0bab0b5b8a8b0e3e2e1e091b6bcb0b8bdffb2bebc">[email&#160;protected]</span></a></span>
+            <span class="hero-contact-item">&#9993; <a href="mailto:abhikakadiya2301@gmail.com">abhikakadiya2301@gmail.com</a></span>
             <span class="hero-contact-item">&#128279; <a href="https://linkedin.com/in/abhishek-kakadiya" target="_blank" rel="noopener">LinkedIn</a></span>
             <span class="hero-contact-item">&#128025; <a href="https://github.com/Abhikakadiya2301" target="_blank" rel="noopener">GitHub</a></span>
           </div>
@@ -481,7 +482,7 @@
     <ul class="footer-links">
       <li><a href="https://linkedin.com/in/abhishek-kakadiya" target="_blank" rel="noopener">LinkedIn</a></li>
       <li><a href="https://github.com/Abhikakadiya2301" target="_blank" rel="noopener">GitHub</a></li>
-      <li><a href="/cdn-cgi/l/email-protection#e687848e8f8d878d87828f9f87d4d5d6d7a6818b878f8ac885898b">Email</a></li>
+      <li><a href="mailto:abhikakadiya2301@gmail.com">Email</a></li>
     </ul>
   </footer>
 
@@ -519,13 +520,21 @@
     </div>
   </div>
 
-  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-    // ── Scroll reveal
+  <script>
+    // ── Scroll reveal (safe: content visible by default, animated only when JS runs)
+    document.body.classList.add("js-loaded");
     const observer = new IntersectionObserver(
       entries => entries.forEach(e => { if(e.isIntersecting) e.target.classList.add("visible"); }),
       { threshold: 0.07 }
     );
     document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
+    // Immediately reveal anything already in viewport
+    setTimeout(() => {
+      document.querySelectorAll(".reveal").forEach(el => {
+        const r = el.getBoundingClientRect();
+        if(r.top < window.innerHeight) el.classList.add("visible");
+      });
+    }, 100);
 
     // ── Contact form
     const form = document.getElementById("contactForm");
@@ -581,7 +590,7 @@
 
     // ── Blog — Medium RSS via rss2json ─────────────────────────────
     // YOUR MEDIUM USERNAME (no @ symbol):
-    const MEDIUM_USER = "abhikakadiya2301";
+    const MEDIUM_USER = "abhihkakadiya2301";
     // Get your FREE API key at rss2json.com → paste it here:
     const RSS_KEY = "tjbffhjh4lxjwmpgsjqs35i4jvw9wi8p6fk4myfe";
     const RSS_URL = "https://api.rss2json.com/v1/api.json?rss_url="
