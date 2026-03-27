@@ -588,99 +588,72 @@
       document.body.style.overflow = "hidden";
     }
 
-    // ── Blog — Medium RSS via rss2json ─────────────────────────────
-    // YOUR MEDIUM USERNAME (no @ symbol):
-    const MEDIUM_USER = "abhikakadiya2301";
-    // Get your FREE API key at rss2json.com → paste it here:
-    const RSS_KEY = "YOUR_RSS2JSON_KEY";
-    const RSS_URL = "https://api.rss2json.com/v1/api.json?rss_url="
-      + encodeURIComponent("https://medium.com/feed/@" + MEDIUM_USER)
-      + "&api_key=" + RSS_KEY + "&count=4";
-
+    // ── Blog — loads from posts.json (admin panel system) ─────────
     let cachedPosts = [];
 
     function stripTags(h) {
       const d = document.createElement("div");
-      d.innerHTML = h; return d.textContent || d.innerText || "";
+      d.innerHTML = h;
+      return d.textContent || d.innerText || "";
     }
 
     function fmtDate(s) {
-      return new Date(s).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
-    }
-
-    function cleanContent(raw) {
-      const d = document.createElement("div");
-      d.innerHTML = raw;
-      d.querySelectorAll("a[href*='medium.com/m/signin']").forEach(a => a.remove());
-      return d.innerHTML;
-    }
-
-    function thumbOrPlaceholder(post, tag) {
-      if (post.thumbnail && post.thumbnail.startsWith("http")) {
-        return `<img class="blog-thumb" src="${post.thumbnail}" alt="" loading="lazy" onerror="this.style.display='none'">`;
-      }
-      return `<div style="width:100%;height:130px;background:linear-gradient(135deg,#dce8f5,#c4d9ee);margin-bottom:1rem;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:0.65rem;color:var(--accent);letter-spacing:0.12em;text-transform:uppercase">${tag}</div>`;
+      return new Date(s).toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"});
     }
 
     async function loadBlogPosts() {
       const grid = document.getElementById("blogGrid");
       try {
-        const res  = await fetch(RSS_URL);
-        const data = await res.json();
-        if (data.status !== "ok" || !data.items || !data.items.length) throw new Error();
+        const res = await fetch("posts.json?t=" + Date.now());
+        if (!res.ok) throw new Error("no posts.json");
+        const posts = await res.json();
+        cachedPosts = posts;
 
-        cachedPosts = data.items
-          .filter(p => p.categories && p.categories.length > 0)
-          .slice(0, 4);
-        if (!cachedPosts.length) cachedPosts = data.items.slice(0, 4);
+        if (!posts.length) {
+          grid.innerHTML = `<div class="blog-empty">
+            No posts yet. Visit <a href="admin.html">admin panel</a> to write your first post.
+          </div>`;
+          return;
+        }
 
-        grid.innerHTML = cachedPosts.map((p, i) => {
-          const tag     = (p.categories && p.categories[0]) || "DevOps";
-          const excerpt = stripTags(p.description || p.content || "").trim().slice(0, 160) + "...";
-          const date    = fmtDate(p.pubDate);
+        grid.innerHTML = posts.map((p, i) => {
+          const excerpt = p.excerpt || stripTags(p.content || "").slice(0, 160) + "...";
+          const date    = fmtDate(p.date);
+          const thumb   = p.cover
+            ? `<img class="blog-thumb" src="${p.cover}" alt="" loading="lazy" onerror="this.style.display='none'">`
+            : `<div style="width:100%;height:130px;background:linear-gradient(135deg,#dce8f5,#c4d9ee);margin-bottom:1rem;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:0.65rem;color:var(--accent);letter-spacing:0.12em;text-transform:uppercase">${p.tag || "DevOps"}</div>`;
           return `<div class="blog-card" onclick="openBlogModal(${i})" role="button" tabindex="0">
-            ${thumbOrPlaceholder(p, tag)}
-            <p class="blog-tag">${tag}</p>
+            ${thumb}
+            <p class="blog-tag">${p.tag || "DevOps"}</p>
             <h3 class="blog-title">${p.title}</h3>
             <p class="blog-excerpt">${excerpt}</p>
-            <p class="blog-meta">${date}</p>
+            <p class="blog-meta">${date}&nbsp;&middot;&nbsp;${p.readTime || "5 min read"}</p>
             <span class="read-more">Read post &rarr;</span>
           </div>`;
         }).join("");
 
       } catch(e) {
         grid.innerHTML = `<div class="blog-empty">
-          Posts will appear here once you set up the RSS key.<br>
-          <a href="https://medium.com/@${MEDIUM_USER}" target="_blank" rel="noopener">Read on Medium &rarr;</a>
+          Posts coming soon.<br>
+          <a href="admin.html">Write your first post &rarr;</a>
         </div>`;
       }
     }
 
     function openBlogModal(idx) {
-      const p      = cachedPosts[idx];
-      const tag    = (p.categories && p.categories[0]) || "DevOps";
-      const date   = fmtDate(p.pubDate);
-      const hero   = p.thumbnail && p.thumbnail.startsWith("http")
-        ? `<img class="blog-reader-hero" src="${p.thumbnail}" alt="">` : "";
-      const body   = cleanContent(p.content || p.description || "");
-
-      document.getElementById("blogModalTag").textContent = tag;
-      const medLink = document.getElementById("blogModalMediumLink");
-      medLink.href  = p.link;
-      medLink.style.display = "inline-flex";
-
+      const p    = cachedPosts[idx];
+      const date = fmtDate(p.date);
+      const hero = p.cover ? `<img class="blog-reader-hero" src="${p.cover}" alt="">` : "";
+      document.getElementById("blogModalTag").textContent = p.tag || "DevOps";
+      document.getElementById("blogModalMediumLink").style.display = "none";
       document.getElementById("blogModalBody").innerHTML = `
         <div class="blog-reader">
           ${hero}
-          <p class="blog-reader-tag">${tag}</p>
+          <p class="blog-reader-tag">${p.tag || "DevOps"}</p>
           <h2 class="blog-reader-title">${p.title}</h2>
-          <p class="blog-reader-meta">${date}&nbsp;&middot;&nbsp;${p.author || "Abhishek Kakadiya"}</p>
-          <div class="blog-reader-body">${body}</div>
-          <div class="blog-reader-footer">Originally published on
-            <a href="${p.link}" target="_blank" rel="noopener" style="color:var(--accent)">Medium</a>.
-          </div>
+          <p class="blog-reader-meta">${date}&nbsp;&middot;&nbsp;${p.readTime || "5 min read"}&nbsp;&middot;&nbsp;Abhishek Kakadiya</p>
+          <div class="blog-reader-body">${p.content || ""}</div>
         </div>`;
-
       document.getElementById("blogModal").classList.add("open");
       document.body.style.overflow = "hidden";
     }
@@ -696,5 +669,17 @@
 
     loadBlogPosts();
 
-    function closeModal(){
-      document.getElementById("docModal").classList.
+    function closeModal() {
+      document.getElementById("docModal").classList.remove("open");
+      document.body.style.overflow = "";
+    }
+    document.getElementById("docModal").addEventListener("click", function(e) {
+      if (e.target === this) closeModal();
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") { closeBlogModal(); closeModal(); }
+    });
+
+  </script>
+</body>
+</html>
